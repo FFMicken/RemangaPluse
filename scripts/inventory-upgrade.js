@@ -1,11 +1,17 @@
 window.reExtUpgrade = {
-    data: { allCards: [], selectedIds: new Set(), isScanned: false },
-    // Веса для правильной сортировки (чем больше число, тем выше ранг)
+    data: { 
+        apiCardsMap: new Map(), 
+        allRanks: new Set(),
+        allTitles: new Map(),
+        isApiLoaded: false
+    },
+    
     RANK_WEIGHT: { 
         'rank_re': 8, 'rank_s': 7, 'rank_a': 6, 'rank_b': 5, 
         'rank_c': 4, 'rank_d': 3, 'rank_e': 2, 'rank_f': 1 
     },
 
+    // 1. ПОЛУЧАЕМ ТЕХНИЧЕСКИЕ ДАННЫЕ ОБО ВСЕХ КАРТАХ
     async startScan() {
         const status = document.getElementById('ext-upg-status');
         const btn = document.getElementById('ext-upg-scan-btn');
@@ -19,13 +25,16 @@ window.reExtUpgrade = {
         btn.disabled = true;
         btn.style.opacity = '0.5';
 
-        this.data.allCards = [];
+        this.data.apiCardsMap.clear();
+        this.data.allRanks.clear();
+        this.data.allTitles.clear();
+
         let page = 1, hasNext = true;
         const baseUrl = `https://api.remanga.org/api/v2/inventory/${userId}/?count=100&exclude_card__rank__in=rank_a&exclude_card__rank__in=rank_re&exclude_card__rank__in=rank_s&type=cards`;
 
         try {
             while (hasNext) {
-                status.innerText = `Загрузка страницы ${page}...`;
+                status.innerText = `Загрузка списка из API... ${page}`;
                 const res = await new Promise(r => chrome.runtime.sendMessage({ 
                     action: "fetch_api", 
                     url: `${baseUrl}&page=${page}`, 
@@ -34,38 +43,44 @@ window.reExtUpgrade = {
 
                 if (res?.success) {
                     const results = res.data.results || [];
-                    this.data.allCards.push(...results);
+                    results.forEach(item => {
+                        const fileName = item.card.cover.mid.split('/').pop();
+                        if (fileName) {
+                            this.data.apiCardsMap.set(fileName, item);
+                            this.data.allRanks.add(item.card.rank);
+                            this.data.allTitles.set(item.card.title.dir, item.card.title.main_name);
+                        }
+                    });
                     hasNext = !!res.data.next;
                     page++;
                 } else break;
             }
 
-            this.data.isScanned = true;
-            this.fillFilters();
-            this.applyFilters();
+            this.data.isApiLoaded = true;
+            this.fillFilters(); 
             
             document.getElementById('ext-upg-scan-block').style.display = 'none';
             document.getElementById('ext-upg-filters-block').style.display = 'flex';
+
+            // Применяем фильтр к тем картам, что УЖЕ на экране
+            this.applyFilters();
+            
+            // Включаем слежку за новыми картами, которые появятся при скролле
+            this.initObserver();
+
+            status.innerText = "Готово! Листайте вниз";
+
         } catch (e) {
             status.innerText = "Ошибка API";
             btn.disabled = false;
-            btn.style.opacity = '1';
         }
     },
 
     fillFilters() {
-        const titles = new Map();
-        const ranks = new Set();
-        this.data.allCards.forEach(c => {
-            ranks.add(c.card.rank);
-            titles.set(c.card.title.dir, c.card.title.main_name);
-        });
-
         const rc = document.getElementById('ext-upg-ranks-container');
         rc.innerHTML = '';
-        
-        // Сортируем ранги так, чтобы B был первым (от большего веса к меньшему)
-        const sortedRanks = [...ranks].sort((a, b) => (this.RANK_WEIGHT[b] || 0) - (this.RANK_WEIGHT[a] || 0));
+        // Ранги от B до F (высокие сверху)
+        const sortedRanks = [...this.data.allRanks].sort((a, b) => (this.RANK_WEIGHT[b] || 0) - (this.RANK_WEIGHT[a] || 0));
 
         sortedRanks.forEach(rank => {
             const label = document.createElement('label');
@@ -77,78 +92,98 @@ window.reExtUpgrade = {
 
         const ts = document.getElementById('ext-upg-title-select');
         ts.innerHTML = '<option value="all">Все тайтлы</option>';
-        [...titles.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([dir, name]) => {
-            const opt = document.createElement('option');
-            opt.value = dir;
-            opt.innerText = name;
-            ts.appendChild(opt);
+        [...this.data.allTitles.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([dir, name]) => {
+            ts.innerHTML += `<option value="${dir}">${name}</option>`;
         });
+    },
+
+    // Обработка конкретной карточки
+    processNode(node) {
+        if (!this.data.isApiLoaded) return;
+        const img = node.querySelector('img');
+        if (!img) return;
+
+        const src = img.getAttribute('src') || "";
+        const fileName = src.split('/').pop();
+        const info = this.data.apiCardsMap.get(fileName);
+
+        if (!info) return;
+
+        const checkedRanks = Array.from(document.querySelectorAll('#ext-upg-ranks-container input:checked')).map(i => i.value);
+        const selectedTitle = document.getElementById('ext-upg-title-select').value;
+
+        const matchRank = checkedRanks.includes(info.card.rank);
+        const matchTitle = selectedTitle === 'all' || info.card.title.dir === selectedTitle;
+
+        if (matchRank && matchTitle) {
+            node.style.display = '';
+            // Сохраняем данные прямо в атрибуты элемента для быстрой сортировки
+            node.setAttribute('data-rank-weight', this.RANK_WEIGHT[info.card.rank] || 0);
+            node.setAttribute('data-created-at', info.created_at);
+        } else {
+            node.style.display = 'none';
+        }
     },
 
     applyFilters() {
-        if (!this.data.isScanned) return;
-        const checkedRanks = Array.from(document.querySelectorAll('#ext-upg-ranks-container input:checked')).map(i => i.value);
-        const titleDir = document.getElementById('ext-upg-title-select').value;
+        const grid = document.querySelector('div.grid.grid-cols-3');
+        if (!grid) return;
+        Array.from(grid.children).forEach(node => {
+            if (node.nodeType === 1) this.processNode(node);
+        });
+        this.sortNodes();
+    },
+
+    sortNodes() {
+        const grid = document.querySelector('div.grid.grid-cols-3');
+        if (!grid) return;
+
         const sortMode = document.getElementById('ext-upg-sort-select').value;
+        const children = Array.from(grid.children).filter(c => c.hasAttribute('data-rank-weight'));
 
-        let filtered = this.data.allCards.filter(c => 
-            checkedRanks.includes(c.card.rank) && 
-            (titleDir === 'all' || c.card.title.dir === titleDir)
-        );
+        children.sort((a, b) => {
+            const valA = parseInt(a.getAttribute('data-rank-weight') || 0);
+            const valB = parseInt(b.getAttribute('data-rank-weight') || 0);
+            const dateA = new Date(a.getAttribute('data-created-at') || 0);
+            const dateB = new Date(b.getAttribute('data-created-at') || 0);
 
-        filtered.sort((a, b) => {
-            const wA = this.RANK_WEIGHT[a.card.rank] || 0;
-            const wB = this.RANK_WEIGHT[b.card.rank] || 0;
-            if (sortMode === 'rank_desc') return wB - wA; // По убыванию (B -> F)
-            if (sortMode === 'rank_asc') return wA - wB;  // По возрастанию (F -> B)
-            if (sortMode === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+            if (sortMode === 'rank_desc') return valB - valA;
+            if (sortMode === 'rank_asc') return valA - valB;
+            if (sortMode === 'newest') return dateB - dateA;
             return 0;
         });
 
-        this.render(filtered);
+        // Переставляем элементы в DOM согласно сортировке
+        children.forEach(child => grid.appendChild(child));
+        
+        // Считаем сколько сейчас реально видно
+        const visibleCount = children.filter(c => c.style.display !== 'none').length;
+        document.getElementById('ext-upg-count').innerText = visibleCount;
     },
 
-    render(cards) {
-        let grid = document.querySelector('div.grid.grid-cols-3');
-        if (!grid) {
-            const anyCard = document.querySelector('div.border-border.relative');
-            if (anyCard) grid = anyCard.parentElement;
-        }
+    // СЛЕЖКА ЗА ПОЯВЛЕНИЕМ НОВЫХ КАРТ ПРИ СКРОЛЛЕ
+    initObserver() {
+        if (this.observer) this.observer.disconnect();
+        const grid = document.querySelector('div.grid.grid-cols-3');
         if (!grid) return;
-        
-        grid.innerHTML = '';
-        const frag = document.createDocumentFragment();
-        
-        cards.forEach(c => {
-            const el = document.createElement('div');
-            el.className = "border-border relative rounded-xs border cursor-pointer hover:opacity-80 transition-all";
-            el.style.aspectRatio = "2/3";
-            
-            if (this.data.selectedIds.has(c.id)) {
-                el.style.outline = "3px solid #ff9900";
-                el.style.outlineOffset = "-3px";
-            }
-            
-            el.innerHTML = `
-                <img src="https://remanga.org/media/${c.card.cover.mid}" class="h-full w-full object-cover rounded-xs" loading="lazy">
-                <div class="absolute bottom-0 w-full bg-black/70 text-[10px] text-center py-0.5">
-                    ${c.card.rank.replace('rank_', '').toUpperCase()}
-                </div>`;
-            
-            el.addEventListener('click', () => {
-                if (this.data.selectedIds.has(c.id)) {
-                    this.data.selectedIds.delete(c.id);
-                    el.style.outline = "none";
-                } else {
-                    this.data.selectedIds.add(c.id);
-                    el.style.outline = "3px solid #ff9900";
-                    el.style.outlineOffset = "-3px";
+
+        this.observer = new MutationObserver((mutations) => {
+            let hasNewNodes = false;
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === 1) {
+                        this.processNode(node);
+                        hasNewNodes = true;
+                    }
                 }
-            });
-            frag.appendChild(el);
+            }
+            if (hasNewNodes) {
+                // Если добавились новые карты, нужно пересортировать список
+                clearTimeout(this.sortDelay);
+                this.sortDelay = setTimeout(() => this.sortNodes(), 100);
+            }
         });
-        
-        grid.appendChild(frag);
-        document.getElementById('ext-upg-count').innerText = cards.length;
+
+        this.observer.observe(grid, { childList: true });
     }
 };
