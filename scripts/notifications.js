@@ -16,31 +16,34 @@ window.reExtNotif = {
     },
 
     init() {
-        const urlStr = window.location.href;
+        const currentUrl = window.location.href;
         
-        // Если сменили вкладку или страницу - сбрасываем состояние
-        if (this.urlContext !== urlStr) {
-            this.urlContext = urlStr;
+        // Проверяем, изменилась ли вкладка (через URL)
+        if (this.urlContext !== currentUrl) {
+            this.urlContext = currentUrl;
             this.reset();
         }
 
         if (!this.loader) {
             this.loader = document.createElement('div');
             this.loader.id = 'ext-notifications-loader';
-            this.loader.style = 'text-align: center; padding: 20px; color: #ff9900; font-weight: bold; width: 100%; clear: both;';
-            this.loader.innerText = 'Крутите вниз для загрузки...';
+            this.loader.style = 'text-align: center; padding: 25px; color: #ff9900; font-weight: bold; width: 100%; clear: both; order: 99999;';
+            this.loader.innerText = 'Загрузка истории...';
             
             this.observer = new IntersectionObserver(e => {
                 if (e[0].isIntersecting && !this.isFetching && this.hasMore) {
                     this.fetchNext();
                 }
-            }, { rootMargin: '300px' });
+            }, { rootMargin: '400px' });
         }
 
         const container = this.getContainer();
-        if (container && !container.contains(this.loader)) {
-            container.appendChild(this.loader);
-            this.observer.observe(this.loader);
+        if (container) {
+            // Если лоадера нет в текущем контейнере или он не в конце - перемещаем вниз
+            if (container.lastElementChild !== this.loader) {
+                container.appendChild(this.loader);
+                this.observer.observe(this.loader);
+            }
             this.loader.style.display = 'block';
         }
     },
@@ -49,17 +52,27 @@ window.reExtNotif = {
         this.currentPage = 2;
         this.hasMore = true;
         this.isFetching = false;
+        // Удаляем только те элементы, которые добавило расширение
+        document.querySelectorAll('.remanga-ext-item').forEach(el => el.remove());
         if (this.loader) {
-            this.loader.innerText = 'Крутите вниз для загрузки...';
+            this.loader.innerText = 'Загрузка истории...';
             this.loader.style.color = '#ff9900';
         }
-        document.querySelectorAll('.remanga-ext-item').forEach(el => el.remove());
     },
 
     getContainer() {
-        return document.querySelector('div[data-sentry-component="FlatListLayout"]') || 
-               document.querySelector('div[data-slot="card"]')?.parentElement ||
-               document.querySelector('div[data-sentry-component="NotificationListAggregated"] > div');
+        // Ищем контейнер, где лежат карточки уведомлений
+        const selectors = [
+            'div[data-sentry-component="FlatListLayout"]',
+            'div[data-sentry-component="NotificationListAggregated"] > div',
+            'div[data-slot="card"]'
+        ];
+
+        for (let s of selectors) {
+            const el = document.querySelector(s);
+            if (el) return el.hasAttribute('data-slot') ? el.parentElement : el;
+        }
+        return null;
     },
 
     fetchNext() {
@@ -104,7 +117,7 @@ window.reExtNotif = {
                     this.currentPage++;
                 }
             } else {
-                this.loader.innerText = 'Ошибка загрузки';
+                this.loader.innerText = 'Ошибка API. Попробуйте позже.';
             }
             this.isFetching = false;
         });
@@ -113,6 +126,8 @@ window.reExtNotif = {
     render(items) {
         const container = this.getContainer();
         if (!container) return;
+
+        const fragment = document.createDocumentFragment();
 
         items.forEach(item => {
             const dateStr = new Date(item.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -123,20 +138,25 @@ window.reExtNotif = {
             else if (item.sender?.avatar?.mid) img = `https://remanga.org/media/${item.sender.avatar.mid}`;
 
             const div = document.createElement('div');
-            div.className = 'remanga-ext-item rounded-md border border-border bg-card p-3 mt-2 flex items-center justify-between hover:bg-accent transition-colors cursor-pointer';
+            // Применяем родные классы ReManga для совместимости
+            div.className = 'remanga-ext-item rounded-md border border-border bg-card p-3 mt-2 flex items-center justify-between hover:bg-accent transition-colors cursor-pointer w-full';
+            div.setAttribute('data-slot', 'card');
             
             const link = item.link || item.action_url || '#';
 
             div.innerHTML = `
                 <a href="${link}" class="flex items-center gap-3 w-full">
-                    <img src="${img}" style="width:40px; height:50px; border-radius:4px; object-fit:cover;" onerror="this.src='https://remanga.org/media/512logo.png'">
-                    <div style="flex:1">
-                        <p class="text-sm font-normal text-foreground break-words">${item.text || item.message || ''}</p>
+                    <img src="${img}" style="width:40px; height:52px; border-radius:4px; object-fit:cover; flex-shrink:0;" onerror="this.src='https://remanga.org/media/512logo.png'">
+                    <div style="flex:1; min-width:0;">
+                        <p class="text-md font-normal text-foreground break-words leading-tight" style="overflow-wrap: anywhere;">${item.text || item.message || ''}</p>
                         <p class="text-[11px] text-muted-foreground mt-1">${dateStr}</p>
                     </div>
                 </a>
             `;
-            container.insertBefore(div, this.loader);
+            fragment.appendChild(div);
         });
+
+        // Вставляем все новые элементы СТРОГО перед лоадером
+        container.insertBefore(fragment, this.loader);
     }
 };
