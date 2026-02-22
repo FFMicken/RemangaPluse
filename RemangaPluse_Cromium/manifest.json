@@ -11,9 +11,6 @@
     "https://remanga.org/*",
     "https://api.remanga.org/*"
   ],
-  "icons": {
-    "48": "icon48.png"
-  },
   "background": {
     "service_worker": "background.js"
   },
