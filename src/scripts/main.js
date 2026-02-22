@@ -71,8 +71,7 @@
         if (url !== prevUrl) {
             prevUrl = url;
             if (!url.includes('/cards-upgrade')) {
-                window.reExtUpgrade.data.isScanned = false;
-                window.reExtUpgrade.data.selectedIds.clear();
+                window.reExtUpgrade.data.isApiLoaded = false;
             }
         }
     }, 1000);
