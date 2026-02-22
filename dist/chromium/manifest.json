@@ -1,0 +1,30 @@
+﻿{
+  "manifest_version": 3,
+  "name": "ReManga User Status & Notifications+",
+  "version": "1.1.0",
+  "description": "Modular extension for ReManga (Chromium build)",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://remanga.org/*",
+    "https://api.remanga.org/*"
+  ],
+  "icons": {
+    "48": "icon48.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://remanga.org/*"],
+      "js": [
+        "scripts/utils.js",
+        "scripts/online-status.js",
+        "scripts/notifications.js",
+        "scripts/inventory-upgrade.js",
+        "scripts/main.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
