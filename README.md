@@ -1,67 +1,88 @@
-﻿# remanga-plus
+﻿# ReManga User Status & Notifications+
 
-Unofficial extension for remanga.org with two builds: Chromium and Firefox.
+Неофициальное расширение для [ReManga.org](https://remanga.org), которое добавляет полезные функции для активных пользователей: онлайн-статус, расширенную историю уведомлений и фильтры в апгрейде карточек.
 
-## Repository Layout
+## Возможности
 
-- src/: shared source files used by all builds
-- manifests/chromium/manifest.json: Chromium manifest
-- manifests/firefox/manifest.json: Firefox manifest
-- assets/icon48.png: shared icon asset
-- dist/: generated build outputs (ignored by git)
-- scripts/: build and packaging scripts
+### Онлайн-статус пользователей
 
-## Build
+- Добавляет индикатор на аватар пользователя.
+- Зеленый индикатор: пользователь онлайн.
+- Красный индикатор: пользователь оффлайн.
 
-Run from repository root in PowerShell:
+### Улучшенные уведомления
+
+- Бесконечная подгрузка истории уведомлений.
+- Поддержка всех основных категорий уведомлений.
+
+### Улучшение апгрейда карточек
+
+- Быстрая загрузка карточек через API.
+- Фильтры по рангу и тайтлу.
+- Сортировка по рангу и по новизне.
+
+## Установка в Chromium-браузеры (Chrome, Edge, Opera, Яндекс)
+
+1. Скачай проект (`Code` -> `Download ZIP`) и распакуй его.
+2. Открой страницу расширений:
+- Chrome/Brave: `chrome://extensions`
+- Edge: `edge://extensions`
+- Opera: `opera://extensions`
+- Яндекс: `browser://extensions`
+3. Включи `Режим разработчика` (`Developer mode`).
+4. Нажми `Загрузить распакованное расширение` (`Load unpacked`).
+5. Выбери папку `dist/chromium`.
+
+После обновления кода нажимай кнопку `Reload` у расширения на странице расширений.
+
+## Установка в Firefox на ПК
+
+1. Открой: `about:debugging#/runtime/this-firefox`
+2. Нажми `Загрузить временное дополнение...` (`Load Temporary Add-on`).
+3. Выбери файл `dist/firefox/manifest.json`.
+
+Важно: временное дополнение в Firefox сбрасывается после полного закрытия браузера.
+
+## Для разработчика
+
+### Структура репозитория
+
+- `src/` - общий код расширения
+- `manifests/chromium/manifest.json` - манифест Chromium
+- `manifests/firefox/manifest.json` - манифест Firefox
+- `assets/icon48.png` - иконка
+- `dist/` - собранные версии
+- `scripts/` - скрипты сборки
+
+### Сборка
 
 ```powershell
 ./scripts/build-chromium.ps1
 ./scripts/build-firefox.ps1
 ```
 
-Build outputs:
-
-- dist/chromium/
-- dist/firefox/
-
-## Auto Build (Watch Mode)
+### Автосборка при изменениях
 
 ```powershell
 ./scripts/watch-build.ps1
 ```
 
-Options:
+Опции:
 
-- `-Target all|chromium|firefox` (default: `all`)
-- `-DebounceMs 400` to control rebuild delay
+- `-Target all|chromium|firefox` (по умолчанию `all`)
+- `-DebounceMs 400` - задержка перед пересборкой
 
-Examples:
+Примеры:
 
 ```powershell
 ./scripts/watch-build.ps1 -Target chromium
 ./scripts/watch-build.ps1 -Target firefox -DebounceMs 700
 ```
-## Package Firefox XPI
+
+### Упаковка Firefox `.xpi`
 
 ```powershell
 ./scripts/pack-firefox-xpi.ps1
 ```
 
-Output file:
-
-- dist/remanga-plus-firefox.xpi
-
-## Load Unpacked
-
-Chromium browsers:
-
-- Open chrome://extensions
-- Enable Developer mode
-- Load unpacked from dist/chromium
-
-Firefox (desktop temporary):
-
-- Open about:debugging#/runtime/this-firefox
-- Load Temporary Add-on and choose dist/firefox/manifest.json
-
+Результат: `dist/remanga-plus-firefox.xpi`
