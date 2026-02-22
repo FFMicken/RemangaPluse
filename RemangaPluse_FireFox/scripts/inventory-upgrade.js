@@ -77,25 +77,40 @@ window.reExtUpgrade = {
     },
 
     fillFilters() {
-        const rc = document.getElementById('ext-upg-ranks-container');
-        rc.innerHTML = '';
-        // Ранги от B до F (высокие сверху)
-        const sortedRanks = [...this.data.allRanks].sort((a, b) => (this.RANK_WEIGHT[b] || 0) - (this.RANK_WEIGHT[a] || 0));
+    const rc = document.getElementById('ext-upg-ranks-container');
+    rc.innerHTML = ''; // Очистка допустима
+    
+    const sortedRanks = [...this.data.allRanks].sort((a, b) => (this.RANK_WEIGHT[b] || 0) - (this.RANK_WEIGHT[a] || 0));
 
-        sortedRanks.forEach(rank => {
-            const label = document.createElement('label');
-            label.style = "font-size:10px; background:#333; padding:2px 5px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:3px;";
-            label.innerHTML = `<input type="checkbox" value="${rank}" checked> ${rank.replace('rank_', '').toUpperCase()}`;
-            label.querySelector('input').addEventListener('change', () => this.applyFilters());
-            rc.appendChild(label);
-        });
+    sortedRanks.forEach(rank => {
+        const label = document.createElement('label');
+        label.style.cssText = "font-size:10px; background:#333; padding:2px 5px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:3px;";
+        
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.value = rank;
+        input.checked = true;
+        input.addEventListener('change', () => this.applyFilters());
+        
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(rank.replace('rank_', '').toUpperCase()));
+        rc.appendChild(label);
+    });
 
-        const ts = document.getElementById('ext-upg-title-select');
-        ts.innerHTML = '<option value="all">Все тайтлы</option>';
-        [...this.data.allTitles.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([dir, name]) => {
-            ts.innerHTML += `<option value="${dir}">${name}</option>`;
-        });
-    },
+    const ts = document.getElementById('ext-upg-title-select');
+    ts.innerHTML = ''; 
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = 'all';
+    defaultOpt.textContent = 'Все тайтлы';
+    ts.appendChild(defaultOpt);
+
+    [...this.data.allTitles.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([dir, name]) => {
+        const opt = document.createElement('option');
+        opt.value = dir;
+        opt.textContent = name;
+        ts.appendChild(opt);
+    });
+},
 
     // Обработка конкретной карточки
     processNode(node) {

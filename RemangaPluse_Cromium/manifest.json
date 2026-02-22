@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ReManga User Status & Notifications+",
   "version": "1.1",
-  "description": "Модульное расширение для ReManga (Firefox Version)",
+  "description": "Модульное расширение для ReManga (Chrome Version)",
   "permissions": [
     "storage",
     "tabs"
@@ -11,8 +11,11 @@
     "https://remanga.org/*",
     "https://api.remanga.org/*"
   ],
+  "icons": {
+    "48": "icon48.png"
+  },
   "background": {
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
@@ -28,10 +31,5 @@
       ],
       "run_at": "document_idle"
     }
-  ],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "remanga-ext-plus@yourdomain.com"
-    }
-  }
+  ]
 }

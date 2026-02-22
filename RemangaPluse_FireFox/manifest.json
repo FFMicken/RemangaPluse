@@ -1,0 +1,54 @@
+﻿{
+    "manifest_version":  3,
+    "name":  "ReManga User Status \u0026 Notifications+",
+    "version":  "1.1.0",
+    "description":  "РњРѕРґСѓР»СЊРЅРѕРµ СЂР°СЃС€РёСЂРµРЅРёРµ РґР»СЏ ReManga. РћРЅР»Р°Р№РЅ-СЃС‚Р°С‚СѓСЃ, РёСЃС‚РѕСЂРёСЏ СѓРІРµРґРѕРјР»РµРЅРёР№ Рё С„РёР»СЊС‚СЂС‹.",
+    "icons":  {
+                  "48":  "icon48.png"
+              },
+    "permissions":  [
+                        "storage",
+                        "tabs"
+                    ],
+    "host_permissions":  [
+                             "https://remanga.org/*",
+                             "https://api.remanga.org/*"
+                         ],
+    "background":  {
+                       "scripts":  [
+                                       "background.js"
+                                   ]
+                   },
+    "action":  {
+
+               },
+    "browser_specific_settings":  {
+                                      "gecko":  {
+                                                    "id":  "remanga-plus-extension@ffmicken.com",
+                                                    "strict_min_version":  "142.0",
+                                                    "data_collection_permissions":  {
+                                                                                        "required":  [
+                                                                                                         "none"
+                                                                                                     ]
+                                                                                    }
+                                                },
+                                      "gecko_android":  {
+                                                            "strict_min_version":  "142.0"
+                                                        }
+                                  },
+    "content_scripts":  [
+                            {
+                                "matches":  [
+                                                "https://remanga.org/*"
+                                            ],
+                                "js":  [
+                                           "scripts/utils.js",
+                                           "scripts/online-status.js",
+                                           "scripts/notifications.js",
+                                           "scripts/inventory-upgrade.js",
+                                           "scripts/main.js"
+                                       ],
+                                "run_at":  "document_idle"
+                            }
+                        ]
+}

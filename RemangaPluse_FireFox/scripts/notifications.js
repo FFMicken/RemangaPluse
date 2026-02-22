@@ -124,39 +124,53 @@ window.reExtNotif = {
     },
 
     render(items) {
-        const container = this.getContainer();
-        if (!container) return;
+    const container = this.getContainer();
+    if (!container) return;
 
-        const fragment = document.createDocumentFragment();
+    const fragment = document.createDocumentFragment();
 
-        items.forEach(item => {
-            const dateStr = new Date(item.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            
-            let img = 'https://remanga.org/media/512logo.png';
-            if (item.attachment) img = `https://remanga.org/media/${item.attachment}`;
-            else if (item.image?.mid) img = `https://remanga.org/media/${item.image.mid}`;
-            else if (item.sender?.avatar?.mid) img = `https://remanga.org/media/${item.sender.avatar.mid}`;
+    items.forEach(item => {
+        const dateStr = new Date(item.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        let img = 'https://remanga.org/media/512logo.png';
+        if (item.attachment) img = `https://remanga.org/media/${item.attachment}`;
+        else if (item.image?.mid) img = `https://remanga.org/media/${item.image.mid}`;
+        else if (item.sender?.avatar?.mid) img = `https://remanga.org/media/${item.sender.avatar.mid}`;
 
-            const div = document.createElement('div');
-            // Применяем родные классы ReManga для совместимости
-            div.className = 'remanga-ext-item rounded-md border border-border bg-card p-3 mt-2 flex items-center justify-between hover:bg-accent transition-colors cursor-pointer w-full';
-            div.setAttribute('data-slot', 'card');
-            
-            const link = item.link || item.action_url || '#';
+        const div = document.createElement('div');
+        div.className = 'remanga-ext-item rounded-md border border-border bg-card p-3 mt-2 flex items-center justify-between hover:bg-accent transition-colors cursor-pointer w-full';
+        div.setAttribute('data-slot', 'card');
+        
+        const link = document.createElement('a');
+        link.href = item.link || item.action_url || '#';
+        link.className = 'flex items-center gap-3 w-full';
 
-            div.innerHTML = `
-                <a href="${link}" class="flex items-center gap-3 w-full">
-                    <img src="${img}" style="width:40px; height:52px; border-radius:4px; object-fit:cover; flex-shrink:0;" onerror="this.src='https://remanga.org/media/512logo.png'">
-                    <div style="flex:1; min-width:0;">
-                        <p class="text-md font-normal text-foreground break-words leading-tight" style="overflow-wrap: anywhere;">${item.text || item.message || ''}</p>
-                        <p class="text-[11px] text-muted-foreground mt-1">${dateStr}</p>
-                    </div>
-                </a>
-            `;
-            fragment.appendChild(div);
-        });
+        const imageEl = document.createElement('img');
+        imageEl.src = img;
+        imageEl.style.cssText = 'width:40px; height:52px; border-radius:4px; object-fit:cover; flex-shrink:0;';
+        imageEl.onerror = () => { imageEl.src = 'https://remanga.org/media/512logo.png'; };
 
-        // Вставляем все новые элементы СТРОГО перед лоадером
-        container.insertBefore(fragment, this.loader);
-    }
+        const contentDiv = document.createElement('div');
+        contentDiv.style.cssText = 'flex:1; min-width:0;';
+
+        const pText = document.createElement('p');
+        pText.className = 'text-md font-normal text-foreground break-words leading-tight';
+        pText.style.overflowWrap = 'anywhere';
+        pText.textContent = item.text || item.message || '';
+
+        const pDate = document.createElement('p');
+        pDate.className = 'text-[11px] text-muted-foreground mt-1';
+        pDate.textContent = dateStr;
+
+        contentDiv.appendChild(pText);
+        contentDiv.appendChild(pDate);
+        link.appendChild(imageEl);
+        link.appendChild(contentDiv);
+        div.appendChild(link);
+        
+        fragment.appendChild(div);
+    });
+
+    container.insertBefore(fragment, this.loader);
+}
 };
